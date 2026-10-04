@@ -19,7 +19,10 @@ table{width:100%;border-collapse:collapse;background:var(--card);border-radius:1
 th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}th{color:var(--mu);font-size:12px;text-transform:uppercase}
 .wrap{overflow-x:auto}.tag{padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid}
 .Open{color:var(--bl)}.InProgress{color:var(--g)}.WaitingParts{color:var(--am)}.Completed{color:var(--mu)}.High{color:var(--rd)}
-dialog{background:var(--card);color:var(--tx);border:1px solid var(--g);border-radius:12px;width:min(680px,95vw);padding:18px}
+dialog{background:var(--card);color:var(--tx);border:1px solid var(--g);border-radius:12px;width:min(820px,95vw);padding:18px}
+#ptab{background:#0f2016}#ptab th,#ptab td{padding:3px 4px}#ptab input,#ptab select{padding:5px;font-size:13px;width:100%}#ptab .x{width:auto;padding:3px 8px}
+.fb{background:#1d3a28;color:var(--g);border-color:var(--g)}
+.qa{background:#0f2016;border:1px solid var(--g);border-radius:10px;padding:10px}.qrow{display:flex;gap:6px;flex-wrap:wrap}.f .qrow input{width:auto;flex:1;min-width:90px}.f .qrow #qd{flex:3;min-width:160px}.f .qrow #qq,.f .qrow #qc{flex:0 0 80px;min-width:70px}
 dialog::backdrop{background:#000a}
 .f{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f label{font-size:12px;color:var(--mu);display:block}.f .w{grid-column:1/-1}
 .f input,.f select,.f textarea{width:100%}
@@ -74,9 +77,21 @@ dialog::backdrop{background:#000a}
 <div><label>Status</label><select id="st"><option>Open</option><option>In Progress</option><option>Waiting Parts</option><option>Completed</option></select></div>
 <div><label>Labor hours</label><input id="lab" type="number" step="0.1"></div>
 <div><label>Parts / cost ($)</label><input id="cost" type="number" step="0.01"></div>
-<div class="w"><label>Parts used / notes</label><textarea id="nt" rows="3"></textarea></div>
-<div class="w"><button class="p" id="save" type="button">Save</button> <button type="button" id="del" class="s">Delete</button> <button type="button" id="x">Cancel</button></div>
+<div class="w qa" id="qa"><label>➕ Add a part (one at a time – saves right away)</label><div class="qrow"><input id="qpn" placeholder="Part #"><input id="qd" placeholder="Description"><input id="qq" type="number" step="any" value="1" placeholder="Qty"><input id="qc" type="number" step="0.01" placeholder="Unit $"><button type="button" class="p" id="qadd">+ Add part</button></div><small id="qmsg" style="color:var(--g)"></small></div>
+<div class="w"><label>Parts on this work order</label><div class="wrap"><table id="ptab"><thead><tr><th style="width:110px">Part #</th><th>Description</th><th style="width:60px">Qty</th><th style="width:85px">Unit $</th><th style="width:105px">Status</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div><button type="button" class="s" id="padd">+ Add part</button> <b id="ptot" style="margin-left:10px"></b></div>
+<div class="w"><label>Work notes</label><textarea id="nt" rows="3"></textarea></div>
+<div class="w"><button class="p" id="save" type="button">Save</button> <button type="button" id="del" class="s">Delete</button> <button type="button" id="x">Cancel</button> <button type="button" id="fwd" class="fb">📤 Forward for parts / more time</button></div>
 </form></dialog>
+<dialog id="fdlg"><div class="f">
+<div class="w"><b>Forward work order</b></div>
+<div class="w"><label>Send to (email)</label><input id="fto" type="email" placeholder="parts@supplier.com"></div>
+<div class="w"><label>Request</label><select id="ftype"><option value="Parts">Parts</option><option value="Time">Additional maintenance time</option><option value="Both">Parts + additional maintenance time</option></select></div>
+<div><label>Additional hours needed</label><input id="fhrs" type="number" step="0.1"></div>
+<div><label>Needed by</label><input id="fdate" type="date"></div>
+<div class="w"><label>Message</label><textarea id="fnote" rows="3"></textarea></div>
+<div class="w"><button class="p" id="fsend" type="button">📧 Open in email</button> <button type="button" id="fcopy">Copy text</button> <button type="button" id="fx">Cancel</button></div>
+<div class="w" id="flog" style="color:var(--mu);font-size:12px"></div>
+</div></dialog>
 <script>window.onerror=function(m){document.body.insertAdjacentHTML("afterbegin","<pre style=\"color:#f88;padding:10px\">Script error: "+m+"</pre>")};</script>
 <script>
 if(typeof CODES==="undefined"){try{var _c=localStorage.getItem("codes");window.CODES=_c?JSON.parse(_c):[]}catch(e){window.CODES=[]}}
@@ -85,7 +100,7 @@ if(typeof CODES==="undefined"){try{var _c=localStorage.getItem("codes");window.C
 /* ====== PASTE YOUR FIREBASE CONFIG HERE (Project settings → Your apps). Leave apiKey empty to run local-only. ====== */
 const firebaseConfig={apiKey:"",authDomain:"",projectId:"",appId:""};
 const SYS={"01":"Engine","02":"Ignition","03":"Emission","04":"Cooling","05":"Fuel / Air","06":"Charging / Battery","07":"Exhaust","08":"Electrical","09":"Lighting","10":"Starting","11":"Clutch","12":"Transmission","13":"Transfer Case","14":"Power Take Off","15":"Drive Line","16":"Differential / Axle","17":"Suspension","18":"Wheel / Tire","19":"Steering","20":"Brakes","21":"Warning Devices","22":"Air System","23":"Hydraulic","24":"Air Conditioning","25":"Heater / Defroster","26":"Wiper","27":"Meters / Gauges","28":"Chassis / Frame","29":"Body","30":"Winch","31":"Towing Device","32":"Outrigger","33":"User Supplied","34":"Periodic Inspection","35":"Periodic Inspection (Specific)","36":"Fuel Servicing","37":"Fire Fighting","38":"Distribution / De-icer","39":"Sweeper","40":"Construction","41":"463L / MHE","42":"Boom","43":"Customer Service / Misc"};
-const $=id=>document.getElementById(id);let WO=[],cur=null,db=null,fb=null,user=null,filt="";
+const $=id=>document.getElementById(id);let P=[],FW=[],WO=[],cur=null,db=null,fb=null,user=null,filt="";
 const live=!!firebaseConfig.apiKey;
 const mem={};const store={get(k="wo"){try{return localStorage.getItem(k)}catch(e){return mem[k]||null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
 function showErr(m){const n=document.getElementById("note");n.style.color="#d65a4a";n.textContent="Error: "+m}
@@ -110,7 +125,7 @@ const q=$("q").value.toLowerCase(),s=$("fs").value||filt;
 const c={Open:0,"In Progress":0,"Waiting Parts":0,Completed:0};WO.forEach(w=>c[w.status]++);
 $("stats").innerHTML=Object.entries(c).map(([k,v])=>`<div class="stat" data-s="${k}"><b>${v}</b><span>${k}</span></div>`).join("")+`<div class="stat" data-s=""><b>${WO.length}</b><span>All</span></div>`;
 $("stats").querySelectorAll(".stat").forEach(e=>e.onclick=()=>{$("fs").value=e.dataset.s;draw()});
-$("rows").innerHTML=WO.filter(w=>(!s||w.status==s)&&(!q||JSON.stringify(w).toLowerCase().includes(q))).map(w=>`<tr><td>WO-${w.num}</td><td>${w.date}</td><td>${w.vehicle}</td><td><code>${w.code}</code></td><td>${w.desc}</td><td class="${w.priority=="Routine"?"":"High"}">${w.priority}</td><td><span class="tag ${w.status.replace(" ","")}">${w.status}</span></td><td><button class="s" data-id="${w.id}">Open</button></td></tr>`).join("")||'<tr><td colspan="8" style="color:var(--mu)">No work orders yet.</td></tr>';
+$("rows").innerHTML=WO.filter(w=>(!s||w.status==s)&&(!q||JSON.stringify(w).toLowerCase().includes(q))).map(w=>`<tr><td>WO-${w.num}</td><td>${w.date}</td><td>${w.vehicle}</td><td><code>${w.code}</code></td><td>${w.desc}${w.forwards&&w.forwards.length?` <span class="tag Completed">📤 ${w.forwards.length}${w.forwards.reduce((a,f)=>a+(+f.hrs||0),0)?" · +"+w.forwards.reduce((a,f)=>a+(+f.hrs||0),0)+"h":""}</span>`:""}${w.parts&&w.parts.length?` <span class="tag Completed">🔩 ${w.parts.length}</span>`:""}</td><td class="${w.priority=="Routine"?"":"High"}">${w.priority}</td><td><span class="tag ${w.status.replace(" ","")}">${w.status}</span></td><td><button class="s" data-id="${w.id}">Open</button></td></tr>`).join("")||'<tr><td colspan="8" style="color:var(--mu)">No work orders yet.</td></tr>';
 $("rows").querySelectorAll("button").forEach(b=>b.onclick=()=>edit(WO.find(w=>w.id==b.dataset.id)));
 afterDraw();
 }
@@ -122,19 +137,20 @@ $("hit").querySelectorAll("div[data-k]").forEach(d=>d.onclick=()=>{const[t,k,ds]
 }
 ["cs","sys","typ"].forEach(i=>$(i).oninput=hits);$("q").oninput=draw;$("fs").onchange=draw;
 function edit(w){cur=w||null;$("dt").textContent=w?`Work Order WO-${w.num}`:"New Work Order";
-const g=(i,v)=>$(i).value=v??"";g("veh",w?.vehicle);g("odo",w?.odometer);g("pri",w?.priority||"Routine");g("st",w?.status||"Open");g("lab",w?.labor);g("cost",w?.cost);g("nt",w?.notes);g("cs","");g("sys","");g("typ","");
-g("sel",w?`${w.code} – ${w.desc}`:"");$("sel").dataset.k=w?.code||"";$("sel").dataset.d=w?.desc||"";$("sel").dataset.t=w?.type||"";
+const g=(i,v)=>$(i).value=v??"";g("veh",w?.vehicle);g("odo",w?.odometer);g("pri",w?.priority||"Routine");g("st",w?.status||"Open");g("lab",w?.labor);g("cost",w?.cost);g("nt",w?.notes);P=(w?.parts||[]).map(x=>({...x}));FW=[...(w?.forwards||[])];rParts(false);g("cs","");g("sys","");g("typ","");
+$("qmsg").textContent="";qaVis(w?.status);g("sel",w?`${w.code} – ${w.desc}`:"");$("sel").dataset.k=w?.code||"";$("sel").dataset.d=w?.desc||"";$("sel").dataset.t=w?.type||"";
 $("del").style.display=w?"":"none";hits();$("dlg").showModal()}
 $("new").onclick=()=>edit();$("x").onclick=()=>$("dlg").close();
-$("save").onclick=async()=>{
+async function saveWO(keep){
 if(!$("veh").value||!$("sel").dataset.k)return alert("Vehicle and a work plan code are required.");
 if(live&&!user)return alert("Sign in first.");
-const o={vehicle:$("veh").value,odometer:$("odo").value,code:$("sel").dataset.k,desc:$("sel").dataset.d,type:$("sel").dataset.t,system:$("sel").dataset.k.slice(0,2),priority:$("pri").value,status:$("st").value,labor:$("lab").value,cost:$("cost").value,notes:$("nt").value};
+const o={vehicle:$("veh").value,odometer:$("odo").value,code:$("sel").dataset.k,desc:$("sel").dataset.d,type:$("sel").dataset.t,system:$("sel").dataset.k.slice(0,2),priority:$("pri").value,status:$("st").value,labor:$("lab").value,cost:$("cost").value,notes:$("nt").value,parts:P,forwards:FW};
 if(cur)Object.assign(cur,o);else{const num=(Math.max(1000,...WO.map(w=>w.num))+1);Object.assign(o,{num,date:new Date().toISOString().slice(0,10),id:String(Date.now())});cur=o;WO.unshift(o)}
 if(live){const{F}=fb,col=F.collection(db,"users",user.uid,"workOrders"),{id,...d}=cur;
 await F.setDoc(F.doc(col,String(cur.num)),d)}
 else store.set("wo",JSON.stringify(WO));
-$("dlg").close();draw()};
+if(!keep)$("dlg").close();draw();return true}
+$("save").onclick=()=>saveWO(false);
 $("del").onclick=async()=>{if(!cur||!confirm("Delete this work order?"))return;
 if(live){const{F}=fb;await F.deleteDoc(F.doc(db,"users",user.uid,"workOrders",String(cur.num)))}
 else{WO=WO.filter(w=>w!==cur);store.set("wo",JSON.stringify(WO))}
@@ -205,6 +221,53 @@ if(live){if(!user)return alert("Sign in first.");const{F}=fb;for(const w of WO)a
 else{WO=[];store.set("wo","[]");draw()}
 $("dmsg").textContent="All work orders deleted."};
 if(location.hash=="#admin")view("a");
+
+/* ===== PARTS + FORWARD ===== */
+const ea=s=>String(s??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const PST=["Needed","Ordered","Received"];
+function rParts(setCost){
+$("pbody").innerHTML=P.map((p,i)=>`<tr><td><input data-i="${i}" data-k="pn" value="${ea(p.pn)}"></td><td><input data-i="${i}" data-k="desc" value="${ea(p.desc)}"></td><td><input data-i="${i}" data-k="qty" type="number" step="any" value="${ea(p.qty)}"></td><td><input data-i="${i}" data-k="cost" type="number" step="0.01" value="${ea(p.cost)}"></td><td><select data-i="${i}" data-k="status">${PST.map(s=>`<option ${s==p.status?"selected":""}>${s}</option>`).join("")}</select></td><td><button type="button" class="s x" data-x="${i}">✕</button></td></tr>`).join("");
+recalc(setCost)}
+function ptotal(){return P.reduce((a,p)=>a+(+p.qty||0)*(+p.cost||0),0)}
+function recalc(setCost){const s=ptotal();$("ptot").textContent=P.length?"Parts total: "+money(s):"";if(setCost&&P.length)$("cost").value=s.toFixed(2)}
+function qaVis(s){$("qa").hidden=($("st").value||s)=="Completed"}
+$("st").onchange=()=>qaVis();
+$("qadd").onclick=async()=>{const pn=$("qpn").value.trim(),d=$("qd").value.trim();
+if(!pn&&!d)return alert("Enter a part # or a description.");
+P.push({pn,desc:d,qty:$("qq").value||"1",cost:$("qc").value,status:"Needed",added:new Date().toISOString().slice(0,16).replace("T"," ")});
+["qpn","qd","qc"].forEach(i=>$(i).value="");$("qq").value="1";rParts(true);$("qpn").focus();
+if(cur){const ok=await saveWO(true);$("qmsg").textContent=ok?"✓ Part added and saved ("+P.length+" on this work order)":""}
+else $("qmsg").textContent="Part added – it will be saved when you save the work order."};
+$("padd").onclick=()=>{P.push({pn:"",desc:"",qty:"1",cost:"",status:"Needed"});rParts(true)};
+$("pbody").oninput=e=>{const t=e.target;if(t.dataset.i==null)return;P[t.dataset.i][t.dataset.k]=t.value;recalc(true)};
+$("pbody").onchange=$("pbody").oninput;
+$("pbody").onclick=e=>{const x=e.target.dataset.x;if(x==null)return;P.splice(+x,1);rParts(true)};
+
+function woText(){
+const ty=$("ftype").value,num=cur?cur.num:Math.max(1000,...WO.map(w=>w.num))+1,hrs=$("fhrs").value;
+const L=[`WORK ORDER WO-${num}`,`Vehicle: ${$("veh").value}`,`Odometer/Hours: ${$("odo").value||"-"}`,`Work plan: ${$("sel").value}`,`Priority: ${$("pri").value}`,"",`REQUEST: ${ty=="Parts"?"Parts":ty=="Time"?"Additional maintenance time":"Parts + additional maintenance time"}`];
+if($("fdate").value)L.push(`Needed by: ${$("fdate").value}`);
+if(ty!="Parts")L.push(`Additional maintenance time needed: ${hrs||"-"} hrs`);
+if(ty!="Time"&&P.length){L.push("","PARTS:");P.forEach(p=>L.push(`- ${p.pn||"(no part #)"} | ${p.desc||""} | Qty ${p.qty||1} | $${p.cost||"0"} ea | ${p.status}`));L.push(`Parts total: ${money(ptotal())}`)}
+if($("fnote").value)L.push("","Message: "+$("fnote").value);
+if($("nt").value)L.push("","Work notes: "+$("nt").value);
+return {num,subj:`WO-${num} – ${ty=="Parts"?"Parts request":ty=="Time"?"Additional time request":"Parts + time request"} – ${$("veh").value}`,body:L.join("\n")}}
+function flog(){$("flog").innerHTML=FW.length?"Previously forwarded:<br>"+FW.map(f=>`${ea(f.date)} → ${ea(f.to||"(copied)")} – ${ea(f.type)}${f.hrs?" +"+ea(f.hrs)+"h":""}`).join("<br>"):""}
+$("fwd").onclick=()=>{if(!$("veh").value||!$("sel").dataset.k)return alert("Enter the vehicle and pick a work plan code first.");
+$("fto").value=store.get("fto")||"";$("fhrs").value="";$("fdate").value="";$("fnote").value="";$("ftype").value=P.length?"Parts":"Time";flog();$("fdlg").showModal()};
+$("fx").onclick=()=>$("fdlg").close();
+async function logSave(to){const ty=$("ftype").value;
+FW.push({date:new Date().toISOString().slice(0,16).replace("T"," "),to,type:ty=="Parts"?"Parts":ty=="Time"?"Additional time":"Parts + time",hrs:$("fhrs").value,need:$("fdate").value,note:$("fnote").value});
+if(ty!="Time")$("st").value="Waiting Parts";
+$("fdlg").close();await $("save").onclick()}
+$("fsend").onclick=async()=>{const to=$("fto").value.trim();if(!to)return alert("Enter an email address (or use Copy text).");
+const m=woText();store.set("fto",to);
+location.href=`mailto:${to}?subject=${encodeURIComponent(m.subj)}&body=${encodeURIComponent(m.body)}`;
+await logSave(to)};
+$("fcopy").onclick=async()=>{const m=woText(),txt=m.subj+"\n\n"+m.body;
+try{await navigator.clipboard.writeText(txt)}catch(e){const a=document.createElement("textarea");a.value=txt;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(e2){}a.remove()}
+alert("Copied. Paste it into your email or text message.");await logSave($("fto").value.trim())};
+
 /* ---- import codes from xlsx (used when codes.js is not present) ---- */
 function chkCodes(){$("nocodes").hidden=CODES.length>0}
 $("xf").onchange=async e=>{const f=e.target.files[0];if(!f)return;
